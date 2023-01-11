@@ -1,0 +1,45 @@
+cabal-version:      3.0
+name:               nixplorer
+version:            0.1.0.0
+synopsis:           Nix derivation explorer
+description:        Nix derivation explorer
+license:            Apache-2.0
+license-file:       LICENSE
+author:             Lars Jellema
+maintainer:         lars.jellema@gmail.com
+category:           Development
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common common
+    ghc-options: -Wall
+    default-language: GHC2021
+
+library
+    import:           common
+    hs-source-dirs:   src
+    exposed-modules:
+        Nixplorer
+
+    build-depends:
+        base ^>=4.16.3.0
+      , brick
+
+executable nixplorer
+    import:           common
+    hs-source-dirs:   app
+    main-is:          Main.hs
+    ghc-options:
+        -threaded
+    build-depends:
+        base ^>=4.16.3.0
+      , nixplorer
+
+test-suite nixplorer-test
+    import:           common
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:
+        base ^>=4.16.3.0
+      , nixplorer
