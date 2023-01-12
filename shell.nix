@@ -10,6 +10,8 @@ let
     with h; [
       brick
       containers
+      directory
+      extra
       filepath
       megaparsec
       mtl
