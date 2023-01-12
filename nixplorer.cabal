@@ -27,8 +27,10 @@ library
       , brick
       , containers
       , extra
+      , lens
       , megaparsec
       , text
+      , vty
 
 executable nixplorer
     import:           common

@@ -13,12 +13,14 @@ let
       directory
       extra
       filepath
+      lens
       megaparsec
       mtl
       parser-combinators
       process
       text
       utf8-string
+      vty
     ]);
 
 in pkgs.mkShell {
