@@ -10,6 +10,7 @@ let
     with h; [
       brick
       containers
+      Clipboard
       directory
       extra
       filepath

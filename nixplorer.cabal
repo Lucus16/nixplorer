@@ -27,6 +27,7 @@ library
     build-depends:
         base ^>=4.16.3.0
       , brick
+      , Clipboard
       , containers
       , extra
       , lens
