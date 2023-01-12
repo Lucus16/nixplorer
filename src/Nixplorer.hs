@@ -37,6 +37,7 @@ browse path = do
     draw = pure . DrvWidget.draw . head
 
     handleEvent :: Event e -> Brick.EventM WidgetName [DrvWidget.State] ()
+    handleEvent (VtyEvent (Char 'q')) = halt
     handleEvent (VtyEvent (Ctrl 'q')) = halt
     handleEvent (VtyEvent (Ctrl 'c')) = halt
     handleEvent ev = DrvWidget.handleEventStack ev

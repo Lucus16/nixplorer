@@ -23,6 +23,9 @@ type List e = GenericList WidgetName Seq e
 pattern Ctrl :: Char -> Vty.Event
 pattern Ctrl c = Vty.EvKey (Vty.KChar c) [Vty.MCtrl]
 
+pattern Char :: Char -> Vty.Event
+pattern Char c = Vty.EvKey (Vty.KChar c) []
+
 focussed :: Widget -> Widget
 focussed = Brick.withAttr $ Brick.attrName "focussed"
 

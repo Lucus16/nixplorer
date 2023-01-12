@@ -13,7 +13,7 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 
 import Brick qualified
-import Brick ((<+>), (<=>), BrickEvent(..), hBox, padLeftRight, str, txt)
+import Brick ((<+>), (<=>), BrickEvent(..), Padding(..), hBox, padLeft, str, txt)
 import Brick.Widgets.List (handleListEvent, list, listSelectedElement, renderList)
 
 import Graphics.Vty.Input.Events qualified as Vty
@@ -41,12 +41,11 @@ new path = do
 
 draw :: State -> Widget
 draw state = str (state ^. statePath)
-  <=> renderList renderInput True (state ^. stateInputs)
+  <=> padLeft (Pad 2) (renderList renderInput True (state ^. stateInputs))
   where
     renderInput :: Bool -> (StorePath, [Text]) -> Widget
     renderInput focus (path, outputs) = focussedIf focus $
-      padLeftRight 2 (str path)
-      <+> hBox (map (padLeftRight 1 . txt) outputs)
+      str path <+> hBox (map (padLeft (Pad 1) . txt) outputs)
 
 enterInput :: Brick.EventM n State (Maybe Action)
 enterInput =
