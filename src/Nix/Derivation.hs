@@ -13,9 +13,9 @@ import Data.Text.IO qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec
 
-type Parser a = Parsec Void Text a
+import Nixplorer.Prelude
 
-type StorePath = String
+type Parser a = Parsec Void Text a
 
 data Output = Output
   { outputPath :: StorePath
