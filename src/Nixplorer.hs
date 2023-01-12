@@ -15,9 +15,9 @@ browse :: FilePath -> IO ()
 browse path = do
   state <- DrvWidget.new path
 
-  void $ Brick.defaultMain app state
+  void $ Brick.defaultMain app [state]
   where
-    app :: App DrvWidget.State e WidgetName
+    app :: App [DrvWidget.State] e WidgetName
     app = App
       { appDraw = draw
       , appChooseCursor = \_ _ -> Nothing
@@ -34,11 +34,12 @@ browse path = do
         attr name f = (Brick.attrName name, f Vty.currentAttr)
         bg    = flip Vty.withBackColor
 
-    draw = pure . DrvWidget.draw
-    handleEvent :: Event e -> Brick.EventM WidgetName DrvWidget.State ()
+    draw = pure . DrvWidget.draw . head
+
+    handleEvent :: Event e -> Brick.EventM WidgetName [DrvWidget.State] ()
     handleEvent (VtyEvent (Ctrl 'q')) = halt
     handleEvent (VtyEvent (Ctrl 'c')) = halt
-    handleEvent ev = DrvWidget.handleEvent ev
+    handleEvent ev = DrvWidget.handleEventStack ev
 
 main :: IO ()
 main = do
