@@ -33,33 +33,13 @@ data Derivation = Derivation
   , drvEnvironment :: Map Text Text
   }
 
-char :: Parser Text
-char = chunk "\\\"" $> "\""
-   <|> chunk "\\\\" $> "\\"
-   <|> chunk "\\n" $> "\n"
-   <|> chunk "\\t" $> "\t"
-   <|> takeWhile1P Nothing (\c -> c /= '\\' && c /= '"')
+-- Parsing
 
-text :: Parser Text
-text = fmap Text.concat $ chunk "\"" *> many char <* chunk "\""
-
-storePath :: Parser StorePath
-storePath = StorePath <$> text
-
-listOf :: Parser a -> Parser [a]
-listOf p = chunk "[" *> sepBy p (chunk ",") <* chunk "]"
-
-mapOf :: Ord k => Parser k -> Parser v -> Parser (Map k v)
-mapOf parseKey parseValue = Map.fromList <$> listOf do
-  void $ chunk "("
-  key <- parseKey
-  void $ chunk ","
-  value <- parseValue
-  void $ chunk ")"
-  pure (key, value)
-
-output :: Parser Output
-output = Output <$> storePath <* chunk "," <*> text <* chunk "," <*> text
+readDerivation :: StorePath -> IO (Either String Derivation)
+readDerivation (StorePath p) =
+  Text.readFile path <&> mapLeft errorBundlePretty . parse derivation path
+  where
+    path = Text.unpack p
 
 derivation :: Parser Derivation
 derivation = do
@@ -76,8 +56,30 @@ derivation = do
   eof
   pure drv
 
-readDerivation :: StorePath -> IO (Either String Derivation)
-readDerivation (StorePath p) =
-  Text.readFile path <&> mapLeft errorBundlePretty . parse derivation path
-  where
-    path = Text.unpack p
+output :: Parser Output
+output = Output <$> storePath <* chunk "," <*> text <* chunk "," <*> text
+
+mapOf :: Ord k => Parser k -> Parser v -> Parser (Map k v)
+mapOf parseKey parseValue = Map.fromList <$> listOf do
+  void $ chunk "("
+  key <- parseKey
+  void $ chunk ","
+  value <- parseValue
+  void $ chunk ")"
+  pure (key, value)
+
+listOf :: Parser a -> Parser [a]
+listOf p = chunk "[" *> sepBy p (chunk ",") <* chunk "]"
+
+storePath :: Parser StorePath
+storePath = StorePath <$> text
+
+text :: Parser Text
+text = fmap Text.concat $ chunk "\"" *> many char <* chunk "\""
+
+char :: Parser Text
+char = chunk "\\\"" $> "\""
+   <|> chunk "\\\\" $> "\\"
+   <|> chunk "\\n" $> "\n"
+   <|> chunk "\\t" $> "\t"
+   <|> takeWhile1P Nothing (\c -> c /= '\\' && c /= '"')
