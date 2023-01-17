@@ -44,7 +44,7 @@ text :: Parser Text
 text = fmap Text.concat $ chunk "\"" *> many char <* chunk "\""
 
 storePath :: Parser StorePath
-storePath = Text.unpack <$> text
+storePath = StorePath <$> text
 
 listOf :: Parser a -> Parser [a]
 listOf p = chunk "[" *> sepBy p (chunk ",") <* chunk "]"
@@ -77,4 +77,7 @@ derivation = do
   pure drv
 
 readDerivation :: StorePath -> IO (Either String Derivation)
-readDerivation path = Text.readFile path <&> mapLeft errorBundlePretty . parse derivation path
+readDerivation (StorePath p) =
+  Text.readFile path <&> mapLeft errorBundlePretty . parse derivation path
+  where
+    path = Text.unpack p

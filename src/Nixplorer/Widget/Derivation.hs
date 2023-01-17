@@ -41,12 +41,12 @@ new path = do
     }
 
 draw :: State -> Widget
-draw state = str (state ^. statePath)
+draw state = txt (state ^. statePath . storePathText)
   <=> padLeft (Pad 2) (renderList renderInput True (state ^. stateInputs))
   where
     renderInput :: Bool -> (StorePath, [Text]) -> Widget
     renderInput focus (path, outputs) = focussedIf focus $
-      str path <+> hBox (map (padLeft (Pad 1) . txt) outputs)
+      txt (path ^. storePathText) <+> hBox (map (padLeft (Pad 1) . txt) outputs)
 
 forSelectedInput :: (StorePath -> [Text] -> Brick.EventM n State a) -> Brick.EventM n State (Maybe a)
 forSelectedInput f = do
@@ -60,7 +60,7 @@ handleEvent (VtyEvent (Vty.EvKey Vty.KRight [])) = enterInput
 handleEvent (VtyEvent (Vty.EvKey Vty.KEnter [])) = enterInput
 handleEvent (VtyEvent (Ctrl ']'))                = enterInput
 handleEvent (VtyEvent (Char 'y')) = join <$> forSelectedInput \path _ -> do
-  liftIO $ setClipboardString path
+  liftIO $ setClipboardString $ path ^. storePathString
   pure Nothing
 handleEvent (VtyEvent ev) = Brick.zoom stateInputs (handleListEvent ev) >> pure Nothing
 handleEvent _ = pure Nothing

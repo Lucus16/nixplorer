@@ -1,5 +1,6 @@
 module Nixplorer (main) where
 
+import Control.Lens
 import Data.Functor (void)
 import System.Environment (getArgs)
 
@@ -13,7 +14,7 @@ import Nixplorer.Widget.Derivation qualified as DrvWidget
 
 browse :: FilePath -> IO ()
 browse path = do
-  state <- DrvWidget.new path
+  state <- DrvWidget.new $ path ^. re storePathString
 
   void $ Brick.defaultMain app [state]
   where
