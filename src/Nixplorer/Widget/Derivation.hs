@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Nixplorer.Widget.Derivation where
@@ -12,9 +13,10 @@ import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
+import Data.Text qualified as Text
 
 import Brick qualified
-import Brick ((<+>), (<=>), BrickEvent(..), Padding(..), hBox, padLeft, str, txt)
+import Brick ((<=>), BrickEvent(..), Padding(..), padLeft, txt)
 import Brick.Widgets.List (handleListEvent, list, listSelectedElement, renderList)
 import Graphics.Vty.Input.Events qualified as Vty
 import System.Clipboard (setClipboardString)
@@ -42,11 +44,12 @@ new path = do
 
 draw :: State -> Widget
 draw state = txt (state ^. statePath . storePathText)
+  <=> txt "input derivations:"
   <=> padLeft (Pad 2) (renderList renderInput True (state ^. stateInputs))
   where
     renderInput :: Bool -> (StorePath, [Text]) -> Widget
-    renderInput focus (path, outputs) = focussedIf focus $
-      txt (path ^. storePathText) <+> hBox (map (padLeft (Pad 1) . txt) outputs)
+    renderInput focus (path, outputs) = focussedIf focus $ txt $
+      path ^. storePathText <> " (" <> Text.intercalate ", " outputs <> ")"
 
 forSelectedInput :: (StorePath -> [Text] -> Brick.EventM n State a) -> Brick.EventM n State (Maybe a)
 forSelectedInput f = do
@@ -69,6 +72,14 @@ popStack :: Brick.EventM n [a] ()
 popStack = Brick.modify \case
   (_:x:xs) -> (x:xs)
   xs       -> xs
+
+drawStack :: [State] -> Widget
+drawStack [] = error "drawStack: State must be nonempty"
+drawStack (s:ss) = foldl drawLevel (draw s) ss
+  where
+    drawLevel :: Widget -> State -> Widget
+    drawLevel inner state = txt (state ^. statePath . storePathText)
+      <=> padLeft (Pad 2) inner
 
 handleEventStack :: Event e -> Brick.EventM WidgetName [State] ()
 handleEventStack (VtyEvent (Ctrl 't')) = popStack

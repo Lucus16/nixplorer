@@ -35,7 +35,7 @@ browse path = do
         attr name f = (Brick.attrName name, f Vty.currentAttr)
         bg    = flip Vty.withBackColor
 
-    draw = pure . DrvWidget.draw . head
+    draw = pure . DrvWidget.drawStack
 
     handleEvent :: Event e -> Brick.EventM WidgetName [DrvWidget.State] ()
     handleEvent (VtyEvent (Char 'q')) = halt
