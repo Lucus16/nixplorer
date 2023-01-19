@@ -35,7 +35,7 @@ makeLenses ''State
 
 new :: StorePath -> IO State
 new path = do
-  drv <- readDerivation path >>= either fail pure
+  drv <- readDerivation path
   let inputs = Seq.fromList $ Map.toList $ drvInputs drv
   pure State
     { _statePath = path

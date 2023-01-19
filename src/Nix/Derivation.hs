@@ -3,10 +3,12 @@
 
 module Nix.Derivation where
 
-import Data.Either.Extra (mapLeft)
-import Data.Functor ((<&>), ($>), void)
+import Control.Lens hiding (mapOf)
+import Data.Functor (($>), void)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
@@ -23,6 +25,7 @@ data Output = Output
   , outputHash :: Text
   }
 
+-- The information contained in a derivation file, excluding its own name.
 data Derivation = Derivation
   { drvOutputs :: Map Text Output
   , drvInputs :: Map StorePath [Text]
@@ -33,13 +36,76 @@ data Derivation = Derivation
   , drvEnvironment :: Map Text Text
   }
 
+-- A root derivation and all of its recursive dependencies as well as reverse
+-- links back to the root.
+data Dependencies = Dependencies
+  { depsOf :: StorePath
+  , depsStart :: Derivation
+  , depsDerivations :: Map StorePath Derivation
+  , depsUses :: Map StorePath (Set StorePath)
+  }
+
+-- Two derivations and the set of derivations that the first one depends on and
+-- that depend on the second one. This can be combined with a Dependencies
+-- record to display all paths through which the first derivation depends on the
+-- second.
+data WhyDepends = WhyDepends
+  { whyDoes :: StorePath
+  , whyDependOn :: StorePath
+  , whyReasons :: Set StorePath
+  }
+
+readDependencies :: StorePath -> IO Dependencies
+readDependencies path = do
+  depsStart <- readDerivation path
+  depsDerivations <- go [path] mempty
+  pure Dependencies
+    { depsOf = path
+    , depsStart
+    , depsDerivations
+    , depsUses = transposeMap $ Map.keysSet . drvInputs <$> depsDerivations
+    }
+
+  where
+    go :: [StorePath] -> Map StorePath Derivation -> IO (Map StorePath Derivation)
+    go [] done = pure done
+    go (todo:todos) done
+      | todo `Map.member` done = go todos done
+      | otherwise = do
+          drv <- readDerivation todo
+          go (Map.keys (drvInputs drv) <> todos) (done & Map.insert todo drv)
+
+whyDepends :: Dependencies -> StorePath -> WhyDepends
+whyDepends deps whyDependOn = WhyDepends
+  { whyDoes = depsOf deps
+  , whyDependOn
+  , whyReasons = completeSet getUses $ Set.singleton whyDependOn
+  }
+  where
+    getUses :: StorePath -> Set StorePath
+    getUses path = Map.findWithDefault Set.empty path (depsUses deps)
+
+completeSet :: Ord a => (a -> Set a) -> Set a -> Set a
+completeSet f xs = go xs xs
+  where
+    go toExpand seen
+      | Set.null toExpand' = seen
+      | otherwise          = go toExpand' (Set.union toExpand' seen)
+      where
+        toExpand' = Set.unions (Set.map f toExpand) `Set.difference` seen
+
+transposeMap :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
+transposeMap = Map.fromListWith Set.union . concatMap getLinks . Map.toList
+  where
+    getLinks (key, values) = (, Set.singleton key) <$> Set.toList values
+
 -- Parsing
 
-readDerivation :: StorePath -> IO (Either String Derivation)
-readDerivation (StorePath p) =
-  Text.readFile path <&> mapLeft errorBundlePretty . parse derivation path
+readDerivation :: StorePath -> IO Derivation
+readDerivation p = Text.readFile path
+  >>= either (fail . errorBundlePretty) pure . parse derivation path
   where
-    path = Text.unpack p
+    path = p ^. storePathString
 
 derivation :: Parser Derivation
 derivation = do
