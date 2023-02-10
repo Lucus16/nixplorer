@@ -8,6 +8,7 @@ let
 
   ghc = haskellPackages.ghcWithHoogle (h:
     with h; [
+      aeson
       brick
       containers
       Clipboard

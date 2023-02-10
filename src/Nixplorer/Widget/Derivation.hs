@@ -7,7 +7,6 @@ module Nixplorer.Widget.Derivation where
 
 import Control.Lens
 import Control.Monad (join)
-import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
@@ -54,11 +53,12 @@ draw cfg state = drawStorePath cfg (state ^. statePath)
   <=> renderList renderInput True (state ^. stateInputs)
   where
     renderInput :: Bool -> (StorePath, [Text]) -> Widget
-    renderInput focus (path, outputs) = focussedIf focus $ txt $
-      pathText <> " (" <> Text.intercalate ", " outputs <> ")"
+    renderInput focus (path, outputs) = styled $ txt $ pathText <> outputsText
       where
         pathText | cfg ^. cfgShowHash = path ^. storePathText
                  | otherwise          = path ^. storePathName
+        outputsText = " (" <> Text.intercalate ", " outputs <> ")"
+        styled = focussedIf focus
 
 forSelectedInput :: (StorePath -> [Text] -> Brick.EventM n State a) -> Brick.EventM n State (Maybe a)
 forSelectedInput f = do

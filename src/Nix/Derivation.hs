@@ -1,9 +1,12 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Nix.Derivation where
 
+import Control.Arrow ((&&&))
 import Control.Lens hiding (mapOf)
+import Data.Aeson qualified as Aeson
 import Data.Functor (($>), void)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -14,35 +17,36 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec
+import System.Process (readProcess)
 
 import Nixplorer.Prelude
 
 type Parser a = Parsec Void Text a
 
 data Output = Output
-  { outputPath :: StorePath
+  { outputPath      :: StorePath
   , outputAlgorithm :: Text
-  , outputHash :: Text
+  , outputHash      :: Text
   }
 
 -- The information contained in a derivation file, excluding its own name.
 data Derivation = Derivation
-  { drvOutputs :: Map Text Output
-  , drvInputs :: Map StorePath [Text]
-  , drvSources :: [StorePath]
-  , drvSystem :: Text
-  , drvBuilder :: StorePath
-  , drvArguments :: [Text]
+  { drvOutputs     :: Map Text Output
+  , drvInputs      :: Map StorePath [Text]
+  , drvSources     :: [StorePath]
+  , drvSystem      :: Text
+  , drvBuilder     :: StorePath
+  , drvArguments   :: [Text]
   , drvEnvironment :: Map Text Text
   }
 
 -- A root derivation and all of its recursive dependencies as well as reverse
 -- links back to the root.
 data Dependencies = Dependencies
-  { depsOf :: StorePath
-  , depsStart :: Derivation
+  { depsOf          :: StorePath
+  , depsStart       :: Derivation
   , depsDerivations :: Map StorePath Derivation
-  , depsUses :: Map StorePath (Set StorePath)
+  , depsUses        :: Map StorePath (Set StorePath)
   }
 
 -- Two derivations and the set of derivations that the first one depends on and
@@ -50,10 +54,31 @@ data Dependencies = Dependencies
 -- record to display all paths through which the first derivation depends on the
 -- second.
 data WhyDepends = WhyDepends
-  { whyDoes :: StorePath
+  { whyDoes     :: StorePath
   , whyDependOn :: StorePath
-  , whyReasons :: Set StorePath
+  , whyReasons  :: Set StorePath
   }
+
+-- | Info for an output path.
+data PathInfo = PathInfo
+  { _pathInfoPath        :: StorePath
+  , _pathInfoDeriver     :: StorePath
+  , _pathInfoNarSize     :: Int
+  , _pathInfoClosureSize :: Int
+  , _pathInfoReferences  :: Set StorePath
+  } deriving (Generic)
+
+makeLenses ''PathInfo
+
+instance FromJSON PathInfo where
+  parseJSON = parseJSONStripPrefix "_pathInfo"
+
+readPathInfos :: (MonadFail m, MonadIO m) => StorePath -> m (Map StorePath PathInfo)
+readPathInfos path =
+  liftIO (readProcess "nix" ["path-info", "--recursive", "--json", path ^. storePathString] "")
+  >>= decodeStringOrFail <&> Map.fromList . map (view pathInfoPath &&& id)
+
+-- Dependencies
 
 readDependencies :: StorePath -> IO Dependencies
 readDependencies path = do
@@ -69,7 +94,7 @@ readDependencies path = do
   where
     go :: [StorePath] -> Map StorePath Derivation -> IO (Map StorePath Derivation)
     go [] done = pure done
-    go (todo:todos) done
+    go (todo : todos) done
       | todo `Map.member` done = go todos done
       | otherwise = do
           drv <- readDerivation todo
@@ -138,7 +163,7 @@ listOf :: Parser a -> Parser [a]
 listOf p = chunk "[" *> sepBy p (chunk ",") <* chunk "]"
 
 storePath :: Parser StorePath
-storePath = StorePath <$> text
+storePath = review storePathText <$> text
 
 text :: Parser Text
 text = fmap Text.concat $ chunk "\"" *> many char <* chunk "\""
