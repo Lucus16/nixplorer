@@ -21,6 +21,7 @@ library
     exposed-modules:
         Nix.Derivation
         Nixplorer
+        Nixplorer.Config
         Nixplorer.Prelude
         Nixplorer.Widget.Derivation
 

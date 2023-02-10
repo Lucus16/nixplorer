@@ -22,6 +22,7 @@ import Graphics.Vty.Input.Events qualified as Vty
 import System.Clipboard (setClipboardString)
 
 import Nix.Derivation (Derivation(..), readDerivation)
+import Nixplorer.Config
 import Nixplorer.Prelude
 
 data State = State
@@ -42,14 +43,22 @@ new path = do
     , _stateInputs = list (InputsFor path) inputs 0
     }
 
-draw :: State -> Widget
-draw state = txt (state ^. statePath . storePathText)
+drawStorePath :: Config -> StorePath -> Widget
+drawStorePath cfg path
+  | cfg ^. cfgShowHash = txt (path ^. storePathText)
+  | otherwise          = txt (path ^. storePathName)
+
+draw :: Config -> State -> Widget
+draw cfg state = drawStorePath cfg (state ^. statePath)
   <=> txt "input derivations:"
-  <=> padLeft (Pad 2) (renderList renderInput True (state ^. stateInputs))
+  <=> renderList renderInput True (state ^. stateInputs)
   where
     renderInput :: Bool -> (StorePath, [Text]) -> Widget
     renderInput focus (path, outputs) = focussedIf focus $ txt $
-      path ^. storePathText <> " (" <> Text.intercalate ", " outputs <> ")"
+      pathText <> " (" <> Text.intercalate ", " outputs <> ")"
+      where
+        pathText | cfg ^. cfgShowHash = path ^. storePathText
+                 | otherwise          = path ^. storePathName
 
 forSelectedInput :: (StorePath -> [Text] -> Brick.EventM n State a) -> Brick.EventM n State (Maybe a)
 forSelectedInput f = do
@@ -73,12 +82,12 @@ popStack = Brick.modify \case
   (_:x:xs) -> (x:xs)
   xs       -> xs
 
-drawStack :: [State] -> Widget
-drawStack [] = error "drawStack: State must be nonempty"
-drawStack (s:ss) = foldl drawLevel (draw s) ss
+drawStack :: Config -> [State] -> Widget
+drawStack _ [] = error "drawStack: State must be nonempty"
+drawStack cfg (s:ss) = foldl drawLevel (draw cfg s) ss
   where
     drawLevel :: Widget -> State -> Widget
-    drawLevel inner state = txt (state ^. statePath . storePathText)
+    drawLevel inner state = drawStorePath cfg (state ^. statePath)
       <=> padLeft (Pad 2) inner
 
 handleEventStack :: Event e -> Brick.EventM WidgetName [State] ()

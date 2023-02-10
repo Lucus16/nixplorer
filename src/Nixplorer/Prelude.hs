@@ -15,6 +15,7 @@ import Data.Text.Lens (unpacked)
 import Graphics.Vty.Input.Events qualified as Vty
 
 import Brick qualified
+import Brick ((<+>))
 import Brick.Widgets.List (GenericList)
 
 newtype StorePath = StorePath { _unStorePath :: Text }
@@ -34,12 +35,16 @@ data WidgetName
 type Widget = Brick.Widget WidgetName
 type Event e = Brick.BrickEvent WidgetName e
 type List e = GenericList WidgetName Seq e
+type EventM state a = Brick.EventM WidgetName state a
 
 storePathText :: Iso' StorePath Text
 storePathText = iso _unStorePath StorePath
 
 storePathString :: Iso' StorePath String
 storePathString = storePathText . unpacked
+
+storePathName :: Getter StorePath Text
+storePathName = storePathText . to (Text.drop 44)
 
 pattern Ctrl :: Char -> Vty.Event
 pattern Ctrl c = Vty.EvKey (Vty.KChar c) [Vty.MCtrl]
@@ -51,5 +56,5 @@ focussed :: Widget -> Widget
 focussed = Brick.withAttr $ Brick.attrName "focussed"
 
 focussedIf :: Bool -> Widget -> Widget
-focussedIf True = focussed
-focussedIf False = id
+focussedIf True  w = Brick.withAttr (Brick.attrName "cursor") (Brick.str "> ") <+> w
+focussedIf False w = Brick.str "  " <+> w
