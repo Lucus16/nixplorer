@@ -46,6 +46,7 @@ browse path = do
       [ attr "focussed"   $ bg Vty.brightWhite . fg Vty.black
       , attr "irrelevant" $ fg Vty.brightBlack
       , attr "cursor"     $ styled Vty.reverseVideo
+      , attr "varname"    $ styled Vty.bold
       ]
       where
         attr :: String -> (Vty.Attr -> Vty.Attr) -> (Brick.AttrName, Vty.Attr)

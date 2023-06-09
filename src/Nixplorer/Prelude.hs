@@ -45,6 +45,7 @@ instance Ord StorePath where
 data WidgetName
   = InputsFor StorePath
   | OutputsFor StorePath StorePath
+  | ViewportFor StorePath
   deriving (Eq, Ord, Show)
 
 type Widget = Brick.Widget WidgetName
