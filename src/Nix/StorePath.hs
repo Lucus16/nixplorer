@@ -4,7 +4,6 @@ module Nix.StorePath where
 
 import Control.Lens
 import Control.Monad (replicateM)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)

@@ -6,6 +6,7 @@ module Nixplorer.Prelude
   , Widget, WidgetName(..), List, Event, EventM
   , pattern Ctrl, pattern Char
   , focussedIf
+  , fromMaybe
   , parseJSONStripPrefix
   , FromJSON, FromJSONKey
   , Generic
@@ -21,6 +22,7 @@ import Data.Aeson.Types qualified as Aeson
 import Data.ByteString.Lazy.UTF8 qualified as BSL
 import Data.Char (isUpper, toLower)
 import Data.Function (on)
+import Data.Maybe (fromMaybe)
 import Data.List (stripPrefix)
 import Data.Sequence (Seq)
 import Data.Text (Text)

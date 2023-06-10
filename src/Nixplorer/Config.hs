@@ -22,6 +22,7 @@ next e | e == maxBound = minBound
 
 data Config = Config
   { _cfgRoot     :: StorePath
+  , _cfgRootDeps :: Dependencies
   , _cfgOrder    :: Order
   , _cfgShowHash :: Bool
   , _cfgFilter   :: Maybe Filter
@@ -30,9 +31,12 @@ data Config = Config
 makeLenses ''Config
 
 loadConfig :: StorePath -> IO Config
-loadConfig root = pure Config
-  { _cfgRoot     = root
-  , _cfgOrder    = OrderByName
-  , _cfgShowHash = True
-  , _cfgFilter   = Nothing
-  }
+loadConfig root = do
+  deps <- readDependencies root
+  pure Config
+    { _cfgRoot     = root
+    , _cfgRootDeps = deps
+    , _cfgOrder    = OrderByName
+    , _cfgShowHash = True
+    , _cfgFilter   = Nothing
+    }

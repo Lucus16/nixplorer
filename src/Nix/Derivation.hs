@@ -2,7 +2,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Nix.Derivation where
+module Nix.Derivation
+  ( Derivation(..)
+  , Output(..)
+  , Dependencies(..)
+  , WhyDepends(..)
+  , PathInfo(..)
+  , pathInfoClosureSize
+  , pathInfoDeriver
+  , pathInfoNarSize
+  , pathInfoPath
+  , pathInfoReferences
+  , depsGetDerivation
+  , drvOutputPaths
+  , readDerivation
+  , readDependencies
+  , readPathInfos
+  , whyDepends
+  ) where
 
 import Control.Arrow ((&&&))
 import Control.Lens hiding (mapOf)
@@ -39,6 +56,9 @@ data Derivation = Derivation
   , drvArguments   :: [Text]
   , drvEnvironment :: Map Text Text
   }
+
+drvOutputPaths :: Derivation -> [StorePath]
+drvOutputPaths = map outputPath . Map.elems . drvOutputs
 
 -- A root derivation and all of its recursive dependencies as well as reverse
 -- links back to the root.
@@ -99,6 +119,13 @@ readDependencies path = do
       | otherwise = do
           drv <- readDerivation todo
           go (Map.keys (drvInputs drv) <> todos) (done & Map.insert todo drv)
+
+-- | errors if derivation is not found
+depsGetDerivation :: Dependencies -> StorePath -> Derivation
+depsGetDerivation deps path = fromMaybe (error msg) $
+  Map.lookup path $ depsDerivations deps
+  where
+    msg = "derivation not found: " <> path ^. storePathString
 
 whyDepends :: Dependencies -> StorePath -> WhyDepends
 whyDepends deps whyDependOn = WhyDepends

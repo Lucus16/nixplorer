@@ -16,11 +16,12 @@ import Data.Text qualified as Text
 
 import Brick qualified
 import Brick ((<=>), (<+>), BrickEvent(..), Padding(..), padLeft, txt)
-import Brick.Widgets.List (handleListEvent, list, listSelectedElement, renderList)
+import Brick.Widgets.List (handleListEvent, list, listSelectedElement, listSelectedElementL, renderList)
 import Graphics.Vty.Input.Events qualified as Vty
 import System.Clipboard (setClipboardString)
 
-import Nix.Derivation (Derivation(..), readDerivation)
+import Nix.Derivation (Derivation(..), depsGetDerivation, drvOutputPaths, readDerivation)
+import Nix.StorePath (findMatchingStorePaths)
 import Nixplorer.Config
 import Nixplorer.Prelude
 
@@ -34,6 +35,9 @@ data State = State
 newtype Action = EnterInput StorePath
 
 makeLenses ''State
+
+stateSelectedInput :: Traversal' State StorePath
+stateSelectedInput = stateInputs . listSelectedElementL . _1
 
 new :: StorePath -> IO State
 new path = do
@@ -73,7 +77,22 @@ draw cfg state = drawStorePath cfg (state ^. statePath)
 
     renderEnvVar :: (Text, Text) -> Widget
     renderEnvVar (k, v) = Brick.withAttr (Brick.attrName "varname") (txt k)
-      <+> txt ": " <+> txt v
+      <+> txt ": " <+> Brick.vBox (map renderEnvLine $ Text.lines v)
+
+    highlightPaths :: [StorePath]
+    highlightPaths = case state ^? stateSelectedInput of
+      Nothing -> []
+      Just selectedInput -> drvOutputPaths $
+        depsGetDerivation (cfg ^. cfgRootDeps) selectedInput
+
+    renderEnvLine :: Text -> Widget
+    renderEnvLine =
+      Brick.hBox
+      . map (either txt highlightPath)
+      . findMatchingStorePaths highlightPaths
+
+    highlightPath :: StorePath -> Widget
+    highlightPath = Brick.withAttr (Brick.attrName "matching path") . txt . view storePathText
 
 forSelectedInput :: (StorePath -> [Text] -> Brick.EventM n State a) -> Brick.EventM n State (Maybe a)
 forSelectedInput f = do
