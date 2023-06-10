@@ -20,6 +20,7 @@ library
     hs-source-dirs:   src
     exposed-modules:
         Nix.Derivation
+        Nix.StorePath
         Nixplorer
         Nixplorer.Config
         Nixplorer.Prelude
