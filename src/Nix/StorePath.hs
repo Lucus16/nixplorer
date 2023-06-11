@@ -6,14 +6,11 @@ import Control.Lens
 import Control.Monad (replicateM)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Void (Void)
 import Text.Megaparsec
 
 import Nixplorer.Prelude
 
 type PotentialStorePath = Text
-
-type Parser a = Parsec Void Text a
 
 findMatchingStorePaths :: [StorePath] -> Text -> [Either Text StorePath]
 findMatchingStorePaths matchers = appendLefts . concatMap matchStorePath . findStorePaths
@@ -36,7 +33,7 @@ findStorePaths t = fromMaybe [Left t] $ parseMaybe (textWithStorePaths <* eof) t
 
 textWithStorePaths :: Parser [Either Text PotentialStorePath]
 textWithStorePaths = fmap appendLefts $ many $
-  Right <$> try storePath
+  Right <$> try storePathWithGarbage
   <|> Left . Text.singleton <$> anySingle
 
 appendLefts :: Monoid s => [Either s a] -> [Either s a]
@@ -47,9 +44,19 @@ appendLefts (x : xs) = x : appendLefts xs
 hashChars :: String
 hashChars = "0123456789abcdfghijklmnpqrsvwxyz"
 
-storePath :: Parser PotentialStorePath
-storePath =
-  chunk "/nix/store/"
-  <> (Text.pack <$> replicateM 32 (satisfy (`elem` hashChars)))
-  <> chunk "-"
+storePathWithGarbage :: Parser PotentialStorePath
+storePathWithGarbage =
+  chunk "/nix/store/" <> storeHash <> chunk "-"
   <> takeWhile1P Nothing (`notElem` ("/" :: String))
+
+commonStorePathChars :: String
+commonStorePathChars = "-_./" <> ['0'..'9'] <> ['A'..'Z'] <> ['a'..'z']
+
+storeHash :: Parser Text
+storeHash = Text.pack <$> replicateM 32 (satisfy (`elem` hashChars))
+
+-- Store path using only common store path characters.
+normalStorePath :: Parser Text
+normalStorePath =
+  chunk "/nix/store/" <> storeHash <> chunk "-"
+  <> takeWhile1P Nothing (`elem` commonStorePathChars)

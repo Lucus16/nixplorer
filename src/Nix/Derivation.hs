@@ -32,13 +32,10 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as Text
-import Data.Void (Void)
 import Text.Megaparsec
 import System.Process (readProcess)
 
 import Nixplorer.Prelude
-
-type Parser a = Parsec Void Text a
 
 data Output = Output
   { outputPath      :: StorePath

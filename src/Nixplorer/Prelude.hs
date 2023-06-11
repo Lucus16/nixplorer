@@ -4,6 +4,7 @@
 module Nixplorer.Prelude
   ( StorePath, storePathText, storePathString, storePathName
   , Widget, WidgetName(..), List, Event, EventM
+  , Parser
   , pattern Ctrl, pattern Char
   , focussedIf
   , fromMaybe
@@ -30,6 +31,8 @@ import Data.Text qualified as Text
 import Data.Text.Lens (unpacked)
 import Data.Tuple (swap)
 import GHC.Generics (Generic, Rep)
+import Data.Void (Void)
+import Text.Megaparsec (Parsec)
 
 import Graphics.Vty.Input.Events qualified as Vty
 
@@ -54,6 +57,7 @@ type Widget = Brick.Widget WidgetName
 type Event e = Brick.BrickEvent WidgetName e
 type List e = GenericList WidgetName Seq e
 type EventM state a = Brick.EventM WidgetName state a
+type Parser a = Parsec Void Text a
 
 storePathText :: Iso' StorePath Text
 storePathText = iso _unStorePath StorePath
