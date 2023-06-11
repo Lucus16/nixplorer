@@ -60,4 +60,5 @@ test-suite nixplorer-test
         base ^>=4.16.3.0
       , directory
       , filepath
+      , lens
       , nixplorer
