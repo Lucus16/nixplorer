@@ -19,6 +19,7 @@ library
     import:           common
     hs-source-dirs:   src
     exposed-modules:
+        Nix.Db
         Nix.Derivation
         Nix.StorePath
         Nixplorer
@@ -39,6 +40,7 @@ library
       , megaparsec
       , process
       , scientific
+      , sqlite-simple
       , text
       , utf8-string
       , vty

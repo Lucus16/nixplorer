@@ -20,6 +20,7 @@ let
       mtl
       parser-combinators
       process
+      sqlite-simple
       text
       utf8-string
       vty

@@ -68,6 +68,7 @@ browse path = do
     handleEvent (VtyEvent (Ctrl 'q')) = halt
     handleEvent (VtyEvent (Ctrl 'c')) = halt
     handleEvent (VtyEvent (Ctrl 'p')) = stateConfig . cfgShowHash %= not
+    handleEvent (VtyEvent (Ctrl 's')) = stateConfig . cfgShowSize %= not
     handleEvent (VtyEvent (Ctrl 'o')) = stateConfig . cfgOrder    %= next
     handleEvent ev = Brick.zoom stateContents $ DrvWidget.handleEventStack ev
 

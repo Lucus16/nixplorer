@@ -3,6 +3,7 @@
 
 module Nixplorer.Prelude
   ( StorePath, storePathText, storePathString, storePathName
+  , Size
   , Widget, WidgetName(..), List, Event, EventM
   , Parser
   , pattern Ctrl, pattern Char
@@ -16,28 +17,32 @@ module Nixplorer.Prelude
   , tshow
   , toList
   , unless, when
+  , (<&>)
+  , first
   ) where
 
 import Control.Lens
+import Control.Monad (unless, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, FromJSONKey)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as Aeson
 import Data.ByteString.Lazy.UTF8 qualified as BSL
 import Data.Char (isUpper, toLower)
+import Data.Foldable (toList)
 import Data.Function (on)
-import Data.Maybe (fromMaybe)
 import Data.List (stripPrefix)
+import Data.Bifunctor (first)
+import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lens (unpacked)
 import Data.Tuple (swap)
-import GHC.Generics (Generic, Rep)
 import Data.Void (Void)
+import GHC.Generics (Generic, Rep)
 import Text.Megaparsec (Parsec)
-import Data.Foldable (toList)
-import Control.Monad (unless, when)
+import Database.SQLite.Simple.FromField (FromField(..))
 
 import Graphics.Vty.Input.Events qualified as Vty
 
@@ -45,9 +50,14 @@ import Brick qualified
 import Brick ((<+>))
 import Brick.Widgets.List (GenericList)
 
+type Size = Int
+
 newtype StorePath = StorePath { _unStorePath :: Text }
   deriving stock (Eq)
   deriving newtype (FromJSON, FromJSONKey, Show)
+
+instance FromField StorePath where
+  fromField field = review storePathText <$> fromField field
 
 instance Ord StorePath where
   compare = compare `on` swap . Text.splitAt 44 . _unStorePath

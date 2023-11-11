@@ -3,9 +3,12 @@
 module Nixplorer.Config where
 
 import Control.Lens
+import Data.Map (Map)
+import Data.Set (Set)
 
 import Nixplorer.Prelude
 import Nix.Derivation
+import Nix.Db
 
 newtype Filter
   = FilterByWhyDepends WhyDepends
@@ -23,8 +26,11 @@ next e | e == maxBound = minBound
 data Config = Config
   { _cfgRoot     :: StorePath
   , _cfgRootDeps :: Dependencies
+  , _cfgNarSizes :: Map StorePath Int
+  , _cfgAllRefs  :: Map StorePath (Set StorePath)
   , _cfgOrder    :: Order
   , _cfgShowHash :: Bool
+  , _cfgShowSize :: Bool
   , _cfgFilter   :: Maybe Filter
   }
 
@@ -32,11 +38,18 @@ makeLenses ''Config
 
 loadConfig :: StorePath -> IO Config
 loadConfig root = do
-  deps <- readDependencies root
+  (narSizes, allRefs) <- withNixDb $ \conn -> do
+    narSizes <- getNarSizes conn
+    allRefs <- getAllRefs conn
+    pure (narSizes, allRefs)
+  deps <- readDependencies allRefs root
   pure Config
     { _cfgRoot     = root
     , _cfgRootDeps = deps
+    , _cfgNarSizes = narSizes
+    , _cfgAllRefs  = allRefs
     , _cfgOrder    = OrderByName
     , _cfgShowHash = True
+    , _cfgShowSize = True
     , _cfgFilter   = Nothing
     }

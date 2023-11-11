@@ -65,6 +65,7 @@ data Dependencies = Dependencies
   , depsStart       :: Derivation
   , depsDerivations :: Map StorePath Derivation
   , depsUses        :: Map StorePath (Set StorePath)
+  , depsRuntimeRec  :: Map StorePath (Set StorePath)
   }
 
 -- Two derivations and the set of derivations that the first one depends on and
@@ -98,15 +99,16 @@ readPathInfos path =
 
 -- Dependencies
 
-readDependencies :: StorePath -> IO Dependencies
-readDependencies path = do
-  depsStart <- readDerivation path
-  depsDerivations <- go [path] mempty
+readDependencies :: Map StorePath (Set StorePath) -> StorePath -> IO Dependencies
+readDependencies allRefs root = do
+  depsStart <- readDerivation root
+  depsDerivations <- go [root] mempty
   pure Dependencies
-    { depsOf = path
+    { depsOf = root
     , depsStart
     , depsDerivations
     , depsUses = transposeMap $ Map.keysSet . drvInputs <$> depsDerivations
+    , depsRuntimeRec = computeRecursiveRuntimeDeps Map.empty root
     }
 
   where
@@ -117,6 +119,21 @@ readDependencies path = do
       | otherwise = do
           drv <- readDerivation todo
           go (Map.keys (drvInputs drv) <> todos) (done & Map.insert todo drv)
+
+    computeRecursiveRuntimeDeps
+      :: Map StorePath (Set StorePath)
+      -> StorePath
+      -> Map StorePath (Set StorePath)
+    computeRecursiveRuntimeDeps deps path =
+      case Map.lookup path deps of
+        Just _ -> deps
+        Nothing ->
+          let deps' = foldl computeRecursiveRuntimeDeps deps (getRefs path)
+              getDeps p = fromMaybe Set.empty $ Map.lookup p deps'
+              pathResults = Set.unions $ getDeps <$> toList (getRefs path)
+          in Map.insert path pathResults deps'
+      where
+        getRefs p = fromMaybe Set.empty $ Map.lookup p allRefs
 
 -- | errors if derivation is not found
 depsGetDerivation :: Dependencies -> StorePath -> Derivation
