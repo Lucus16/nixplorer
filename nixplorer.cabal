@@ -27,7 +27,7 @@ library
         Nixplorer.Widget.Derivation
 
     build-depends:
-        base ^>=4.16.3.0
+        base
       , aeson
       , brick
       , bytestring
@@ -48,7 +48,7 @@ executable nixplorer
     ghc-options:
         -threaded
     build-depends:
-        base ^>=4.16.3.0
+        base
       , nixplorer
 
 test-suite nixplorer-test
@@ -57,7 +57,7 @@ test-suite nixplorer-test
     hs-source-dirs:   test
     main-is:          Main.hs
     build-depends:
-        base ^>=4.16.3.0
+        base
       , directory
       , filepath
       , lens
