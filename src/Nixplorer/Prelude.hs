@@ -13,6 +13,9 @@ module Nixplorer.Prelude
   , Generic
   , MonadIO, liftIO
   , decodeStringOrFail
+  , tshow
+  , toList
+  , unless, when
   ) where
 
 import Control.Lens
@@ -33,6 +36,8 @@ import Data.Tuple (swap)
 import GHC.Generics (Generic, Rep)
 import Data.Void (Void)
 import Text.Megaparsec (Parsec)
+import Data.Foldable (toList)
+import Control.Monad (unless, when)
 
 import Graphics.Vty.Input.Events qualified as Vty
 
@@ -88,3 +93,6 @@ parseJSONStripPrefix prefix = Aeson.genericParseJSON Aeson.defaultOptions
 
 decodeStringOrFail :: (FromJSON a, MonadFail m) => String -> m a
 decodeStringOrFail = either fail pure . Aeson.eitherDecode . BSL.fromString
+
+tshow :: Show a => a -> Text
+tshow = Text.pack . show

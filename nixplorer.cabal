@@ -37,6 +37,7 @@ library
       , lens
       , megaparsec
       , process
+      , scientific
       , text
       , utf8-string
       , vty

@@ -13,7 +13,12 @@ import Data.Maybe (maybeToList)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Encoding qualified as Text
 import Text.Megaparsec ((<|>), chunk, parseMaybe, sepBy)
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as KeyMap
+import Data.Aeson.Key qualified as Key
+import Data.Scientific qualified as Scientific
 
 import Brick qualified
 import Brick ((<=>), (<+>), BrickEvent(..), Padding(..), padLeft, txt)
@@ -128,10 +133,18 @@ handleEventStack ev = do
 data InterpretedEnvVar
   = StorePathList Text [StorePath]
   | RawLines [Text]
+  | Json Aeson.Value
   deriving (Show)
 
 interpretEnvVar :: Text -> InterpretedEnvVar
-interpretEnvVar t = fromMaybe (RawLines $ Text.lines t) $ parseMaybe interpretedEnvVar t
+interpretEnvVar t = fromMaybe (RawLines $ Text.lines t) $
+  parseMaybe interpretedEnvVar t <|> jsonVar t
+
+jsonVar :: Text -> Maybe InterpretedEnvVar
+jsonVar t = do
+  json <- Aeson.decodeStrict (Text.encodeUtf8 t)
+  unless (isMultilineJson json) $ fail "not definitely json"
+  pure $ Json json
 
 interpretedEnvVar :: Parser InterpretedEnvVar
 interpretedEnvVar = storePathsSepBy " " <|> storePathsSepBy ":"
@@ -153,6 +166,9 @@ renderEnvVar cfg state (k, v) =
     StorePathList sep paths ->
       Brick.withAttr (Brick.attrName "interpretation") (txt "list of store paths:")
       <=> Brick.vBox (map ((txt sep <+>) . renderEnvLine . view storePathText) paths)
+    Json json ->
+      Brick.withAttr (Brick.attrName "interpretation") (txt "json:")
+      <=> renderJson json
     RawLines ls -> Brick.vBox (map renderEnvLine ls)
   where
 
@@ -170,3 +186,27 @@ renderEnvVar cfg state (k, v) =
 
     highlightPath :: StorePath -> Widget
     highlightPath = Brick.withAttr (Brick.attrName "matching path") . txt . view storePathText
+
+    renderJson :: Aeson.Value -> Widget
+    renderJson Aeson.Null = txt "null"
+    renderJson (Aeson.Bool False) = txt "false"
+    renderJson (Aeson.Bool True) = txt "true"
+    renderJson (Aeson.Number n) = case Scientific.toBoundedInteger @Int n of
+      Nothing -> txt $ tshow n
+      Just i -> txt $ tshow i
+    renderJson (Aeson.String t) = Brick.vBox $ map renderEnvLine $ Text.lines t
+    renderJson (Aeson.Array xs) = Brick.vBox $ flip map (toList xs) \value ->
+      Brick.txt "- " <+> renderJson value
+    renderJson (Aeson.Object kvs) = Brick.vBox $ flip map (KeyMap.toList kvs) \(key, value) ->
+      case value of
+        Aeson.Array{} -> (renderKey key <+> txt ":") <=> renderJson value
+        Aeson.Object{} -> (renderKey key <+> txt ":") <=> (txt "  " <+> renderJson value)
+        _ -> renderKey key <+> txt ": " <+> renderJson value
+
+    renderKey :: Aeson.Key -> Widget
+    renderKey key = Brick.txt (Key.toText key)
+
+isMultilineJson :: Aeson.Value -> Bool
+isMultilineJson Aeson.Object{} = True
+isMultilineJson Aeson.Array{} = True
+isMultilineJson _ = False
