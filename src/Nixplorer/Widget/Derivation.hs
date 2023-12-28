@@ -156,21 +156,23 @@ storePathsSepBy sep =
 
 renderEnvVar :: Config -> State -> (Text, InterpretedEnvVar) -> Widget
 renderEnvVar cfg state (k, v) =
-  Brick.withAttr (Brick.attrName "varname") (txt k) <+> txt ": " <+>
   case v of
-    StorePathList _ [] -> Brick.withAttr (Brick.attrName "interpretation") (txt "empty")
-    StorePathList _ [path] -> renderEnvLine (path ^. storePathText)
-    StorePathList " " paths ->
-      Brick.withAttr (Brick.attrName "interpretation") (txt "list of store paths:")
-      <=> Brick.vBox (map (renderEnvLine . view storePathText) paths)
-    StorePathList sep paths ->
-      Brick.withAttr (Brick.attrName "interpretation") (txt "list of store paths:")
-      <=> Brick.vBox (map ((txt sep <+>) . renderEnvLine . view storePathText) paths)
-    Json json ->
-      Brick.withAttr (Brick.attrName "interpretation") (txt "json:")
-      <=> renderJson json
-    RawLines ls -> Brick.vBox (map renderEnvLine ls)
+    StorePathList _ [] -> interp "empty" Brick.emptyWidget
+    StorePathList _ [path] -> single $ renderEnvLine (path ^. storePathText)
+    StorePathList " " paths -> interp "list of store paths" $
+      Brick.vBox (map (renderEnvLine . view storePathText) paths)
+    StorePathList sep paths -> interp "list of store paths" $
+      Brick.vBox (map ((txt sep <+>) . renderEnvLine . view storePathText) paths)
+    Json json -> interp "json" $ renderJson json
+    RawLines [line] -> single $ renderEnvLine line
+    RawLines ls -> multi $ Brick.vBox (map renderEnvLine ls)
   where
+    keyWidget = Brick.withAttr (Brick.attrName "varname") (txt k) <+> txt ":"
+    single s = keyWidget <+> Brick.padLeft (Pad 1) s
+    multi = interp mempty
+    interp s m =
+      keyWidget <+> Brick.padLeft (Pad 1) (Brick.withAttr (Brick.attrName "interpretation") (txt s))
+      <=> Brick.padLeft (Pad 2) m
 
     highlightPaths :: [StorePath]
     highlightPaths = case state ^? stateSelectedInput of
