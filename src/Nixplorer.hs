@@ -11,6 +11,7 @@ import Brick (App(..), BrickEvent(..), halt)
 
 import Graphics.Vty.Attributes qualified as Vty
 
+import Nix.Derivation
 import Nixplorer.Prelude
 import Nixplorer.Config
 import Nixplorer.Widget.Derivation qualified as DrvWidget
@@ -22,12 +23,15 @@ data State = State
 
 makeLenses ''State
 
-browse :: FilePath -> IO ()
-browse path = do
+browse :: FilePath -> Maybe FilePath -> IO ()
+browse path mbDependOn = do
   rootWidget <- DrvWidget.new $ path ^. re storePathString
   config <- loadConfig $ path ^. re storePathString
+  let mbFilter =
+        FilterByWhyDepends . whyDepends (config ^. cfgRootDeps) . review storePathString
+          <$> mbDependOn
   let state = State
-        { _stateConfig   = config
+        { _stateConfig   = config & cfgFilter .~ mbFilter
         , _stateContents = [rootWidget]
         }
 
@@ -46,6 +50,7 @@ browse path = do
       [ attr "focussed"       $ bg Vty.brightWhite . fg Vty.black
       , attr "irrelevant"     $ fg Vty.brightBlack
       , attr "cursor"         $ styled Vty.reverseVideo
+      , attr "irrelevant-cursor" $ styled Vty.reverseVideo . fg Vty.brightBlack
       , attr "varname"        $ styled Vty.bold
       , attr "matching path"  $ styled Vty.bold . fg Vty.brightYellow
       , attr "interpretation" $ fg Vty.brightBlack
@@ -76,5 +81,6 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    [arg] -> browse arg
+    [arg] -> browse arg Nothing
+    [why, does, dependOn] | why `elem` ["why", "why-depend", "why-depends"] -> browse does (Just dependOn)
     _     -> fail "usage: nixplorer /nix/store/foo.drv"

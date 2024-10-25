@@ -2,6 +2,7 @@
 
 module Nixplorer.Config where
 
+import Data.Set qualified as Set
 import Control.Lens
 import Data.Map (Map)
 import Data.Set (Set)
@@ -35,6 +36,11 @@ data Config = Config
   }
 
 makeLenses ''Config
+
+filterHasPath :: Config -> StorePath -> Bool
+filterHasPath cfg path = case cfg ^. cfgFilter of
+  Nothing -> True
+  Just (FilterByWhyDepends w) -> path `Set.member` whyReasons w
 
 loadConfig :: StorePath -> IO Config
 loadConfig root = do

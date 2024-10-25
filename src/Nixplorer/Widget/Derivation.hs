@@ -79,7 +79,12 @@ draw cfg state = drawStorePath cfg (state ^. statePath)
         pathText | cfg ^. cfgShowHash = path ^. storePathText
                  | otherwise          = path ^. storePathName
         outputsText = " (" <> Text.intercalate ", " outputs <> ")"
-        styled = focussedIf focus
+        irrelevant = not $ filterHasPath cfg path
+        styled
+          | focus && irrelevant = Brick.withAttr $ Brick.attrName "irrelevant-cursor"
+          | focus = Brick.withAttr $ Brick.attrName "cursor"
+          | irrelevant = Brick.withAttr $ Brick.attrName "irrelevant"
+          | otherwise = id
 
 forSelectedInput :: (StorePath -> [Text] -> Brick.EventM n State a) -> Brick.EventM n State (Maybe a)
 forSelectedInput f = do

@@ -7,7 +7,7 @@ module Nixplorer.Prelude
   , Widget, WidgetName(..), List, Event, EventM
   , Parser
   , pattern Ctrl, pattern Char
-  , focussedIf
+  , withAttrIf
   , fromMaybe
   , parseJSONStripPrefix
   , FromJSON, FromJSONKey
@@ -47,7 +47,6 @@ import Database.SQLite.Simple.FromField (FromField(..))
 import Graphics.Vty.Input.Events qualified as Vty
 
 import Brick qualified
-import Brick ((<+>))
 import Brick.Widgets.List (GenericList)
 
 type Size = Int
@@ -89,9 +88,9 @@ pattern Ctrl c = Vty.EvKey (Vty.KChar c) [Vty.MCtrl]
 pattern Char :: Char -> Vty.Event
 pattern Char c = Vty.EvKey (Vty.KChar c) []
 
-focussedIf :: Bool -> Widget -> Widget
-focussedIf True  w = Brick.withAttr (Brick.attrName "cursor") $ Brick.str "> " <+> w
-focussedIf False w = Brick.str "  " <+> w
+withAttrIf :: Bool -> String -> Widget -> Widget
+withAttrIf False _ = id
+withAttrIf True a = Brick.withAttr (Brick.attrName a)
 
 parseJSONStripPrefix :: (Generic a, Aeson.GFromJSON Aeson.Zero (Rep a)) => String -> Aeson.Value -> Aeson.Parser a
 parseJSONStripPrefix prefix = Aeson.genericParseJSON Aeson.defaultOptions
