@@ -23,6 +23,7 @@ library
         Nix.StorePath
         Nixplorer
         Nixplorer.Config
+        Nixplorer.Interpretation
         Nixplorer.Prelude
         Nixplorer.Widget.Derivation
 

@@ -13,8 +13,6 @@ import Data.Maybe (maybeToList)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Encoding qualified as Text
-import Text.Megaparsec ((<|>), chunk, parseMaybe, sepBy)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Key qualified as Key
@@ -27,9 +25,10 @@ import Graphics.Vty.Input.Events qualified as Vty
 import System.Clipboard (setClipboardString)
 
 import Nix.Derivation (Derivation(..), depsGetDerivation, drvOutputPaths, readDerivation)
-import Nix.StorePath (findMatchingStorePaths, normalStorePath)
+import Nix.StorePath (findMatchingStorePaths)
 import Nixplorer.Config
 import Nixplorer.Prelude
+import Nixplorer.Interpretation
 
 data State = State
   { _statePath :: StorePath
@@ -71,7 +70,7 @@ draw cfg state = drawStorePath cfg (state ^. statePath)
     environmentWidget :: Widget
     environmentWidget = Brick.padLeft (Brick.Pad 2)
       $ Brick.viewport (ViewportFor (state ^. statePath)) Brick.Vertical
-      $ Brick.vBox $ map (renderEnvVar cfg state . fmap interpretEnvVar)
+      $ Brick.vBox $ map (renderEnvVar cfg state)
       $ Map.assocs $ drvEnvironment $ state ^. stateDrv
 
     renderInput :: Bool -> (StorePath, [Text]) -> Widget
@@ -130,33 +129,9 @@ handleEventStack ev = do
       widget <- liftIO $ new path
       Brick.modify (widget:)
 
-data InterpretedEnvVar
-  = StorePathList Text [StorePath]
-  | RawLines [Text]
-  | Json Aeson.Value
-  deriving (Show)
-
-interpretEnvVar :: Text -> InterpretedEnvVar
-interpretEnvVar t = fromMaybe (RawLines $ Text.lines t) $
-  parseMaybe interpretedEnvVar t <|> jsonVar t
-
-jsonVar :: Text -> Maybe InterpretedEnvVar
-jsonVar t = do
-  json <- Aeson.decodeStrict (Text.encodeUtf8 t)
-  unless (isMultilineJson json) $ fail "not definitely json"
-  pure $ Json json
-
-interpretedEnvVar :: Parser InterpretedEnvVar
-interpretedEnvVar = storePathsSepBy " " <|> storePathsSepBy ":"
-
-storePathsSepBy :: Text -> Parser InterpretedEnvVar
-storePathsSepBy sep =
-  StorePathList sep . map (review storePathText)
-  <$> normalStorePath `sepBy` chunk sep
-
-renderEnvVar :: Config -> State -> (Text, InterpretedEnvVar) -> Widget
-renderEnvVar cfg state (k, v) =
-  case v of
+renderEnvVar :: Config -> State -> (Text, InterpretedText) -> Widget
+renderEnvVar cfg state (k, InterpretedText _ interpretation) =
+  case interpretation of
     StorePathList _ [] -> interp "empty" Brick.emptyWidget
     StorePathList _ [path] -> single $ renderEnvLine (path ^. storePathText)
     StorePathList " " paths -> interp "list of store paths" $

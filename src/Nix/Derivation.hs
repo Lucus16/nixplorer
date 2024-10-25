@@ -36,6 +36,7 @@ import Text.Megaparsec
 import System.Process (readProcess)
 
 import Nixplorer.Prelude
+import Nixplorer.Interpretation
 
 data Output = Output
   { outputPath      :: StorePath
@@ -47,11 +48,11 @@ data Output = Output
 data Derivation = Derivation
   { drvOutputs     :: Map Text Output
   , drvInputs      :: Map StorePath [Text]
-  , drvSources     :: [StorePath]
+  , drvSources     :: Set StorePath
   , drvSystem      :: Text
   , drvBuilder     :: StorePath
   , drvArguments   :: [Text]
-  , drvEnvironment :: Map Text Text
+  , drvEnvironment :: Map Text InterpretedText
   }
 
 drvOutputPaths :: Derivation -> [StorePath]
@@ -162,11 +163,11 @@ derivation = do
   drv <- Derivation
     <$> mapOf text output <* chunk ","
     <*> mapOf storePath (listOf text) <* chunk ","
-    <*> listOf storePath <* chunk ","
+    <*> setOf storePath <* chunk ","
     <*> text <* chunk ","
     <*> storePath <* chunk ","
     <*> listOf text <* chunk ","
-    <*> mapOf text text
+    <*> mapOf text interpretedText
   void $ chunk ")"
   eof
   pure drv
@@ -186,11 +187,17 @@ mapOf parseKey parseValue = Map.fromList <$> listOf do
 listOf :: Parser a -> Parser [a]
 listOf p = chunk "[" *> sepBy p (chunk ",") <* chunk "]"
 
+setOf :: Ord a => Parser a -> Parser (Set a)
+setOf p = Set.fromList <$> listOf p
+
 storePath :: Parser StorePath
 storePath = review storePathText <$> text
 
 text :: Parser Text
 text = fmap Text.concat $ chunk "\"" *> many char <* chunk "\""
+
+interpretedText :: Parser InterpretedText
+interpretedText = interpretText <$> text
 
 char :: Parser Text
 char = chunk "\\\"" $> "\""
